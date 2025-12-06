@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  stock-sync:
+    build: .
+    environment:
+      MYSQL_USER: root
+      MYSQL_PASSWORD: InsightOne123456
+      MYSQL_HOST: mysql
+      MYSQL_DB: stock_db
+    volumes:
+      - ./code.csv:/app/code.csv:ro
+      - ./logs:/app/logs
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: InsightOne123456
+      MYSQL_DATABASE: stock_db
+    ports:
+      - "3306:3306"
+
+volumes:
+  mysql_data:
