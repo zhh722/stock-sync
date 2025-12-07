@@ -10,6 +10,4 @@ services:
     volumes:
       - ./code.csv:/app/code.csv:ro
       - ./logs:/app/logs
-    depends_on:
-      - mysql
     restart: unless-stopped
