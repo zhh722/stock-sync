@@ -1,4 +1,10 @@
 pandas
 SQLAlchemy
+akshare
+akshare
+pandas
+sqlalchemy
 mysql-connector-python
-baostock
+tenacity
+requests
+psycopg2-binary
