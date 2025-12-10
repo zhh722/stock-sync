@@ -1,13 +1,20 @@
 version: '3.8'
 services:
   stock-sync:
+    container_name: stock_sync
     build: .
     environment:
       MYSQL_USER: root
       MYSQL_PASSWORD: InsightOne123456
-      MYSQL_HOST: mysql
+      MYSQL_HOST: mysql # 关键修改：此处改为MySQL容器的服务名
       MYSQL_DB: stock_db
     volumes:
       - ./code.csv:/app/code.csv:ro
       - ./logs:/app/logs
     restart: unless-stopped
+    networks: # 加入网络配置
+      - public_net
+
+networks: # 声明使用外部网络
+  public_net:
+    external: true

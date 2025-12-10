@@ -59,6 +59,7 @@ def main():
 
             for code in batch_codes:
                 try:
+                    time.sleep(random.uniform(30, 60))
                     # 获取最新周线日期
                     latest_date = get_latest(engine, code, "stock_weekly", "date")
                     if latest_date:
@@ -76,9 +77,6 @@ def main():
 
                 except Exception as e:
                     logger.error(f"❌ {code} 同步失败: {e}")
-
-            # 批次间休眠
-            time.sleep(random.uniform(30, 60))
 
         logger.info("✅ 周线数据同步完成")
 
