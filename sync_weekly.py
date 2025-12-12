@@ -18,7 +18,7 @@ MYSQL_DB = os.getenv("MYSQL_DB", "stock_db")
 CODE_CSV_PATH = os.getenv("CODE_CSV_PATH", "./code.csv")
 
 # ================== 日志 ==================
-log_dir = "./logs"
+log_dir = "/app/logs"
 os.makedirs(log_dir, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
