@@ -241,7 +241,7 @@ def main():
             logger.warning("⚠️ 未加载到任何股票代码，请检查 code.csv")
             return
 
-        logger.info(f"共 {len(all_codes)} 只股票 | 批大小: {BATCH_SIZE}")
+        logger.info(f"共 {len(all_codes)} 只股票")
 
         now = datetime.now()
         end_date_str = now.strftime("%Y%m%d")
