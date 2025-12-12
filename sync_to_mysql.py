@@ -254,56 +254,41 @@ def main():
 
         logger.info(f"同步截止日期: {end_date_str}")
 
-        total_batches = (len(all_codes) + BATCH_SIZE - 1) // BATCH_SIZE
         failed_list = []
+        total = len(all_codes)
+        cnt = 0
+        for code in all_codes:
+            cnt += 1
+            logger.info(f"正在同步{cnt}/{total}")
+            pytime.sleep(random.uniform(30, 60))
+            try:
+                # 同步日线数据
+                latest_daily = get_latest(engine, code, "stock_daily", "date")
+                if latest_daily:
+                    start_str = (datetime.strptime(latest_daily, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y%m%d")
+                else:
+                    start_str = FULL_DATA_START_DATE
 
-        for batch_idx in range(total_batches):
-            start_i = batch_idx * BATCH_SIZE
-            end_i = min(start_i + BATCH_SIZE, len(all_codes))
-            batch_codes = all_codes[start_i:end_i]
+                df_d = fetch_ak_data(code, start_str, end_date_str, "daily")
+                if not df_d.empty:
+                    upsert(df_d, "stock_daily", engine, "date")
 
-            logger.info(f"\n🚀 开始第 {batch_idx + 1}/{total_batches} 批（{start_i + 1} ~ {end_i}）")
+                # 同步周线数据
+                latest_weekly = get_latest(engine, code, "stock_weekly", "date")
+                if latest_weekly:
+                    start_str = (datetime.strptime(latest_weekly, "%Y-%m-%d") + timedelta(days=7)).strftime(
+                        "%Y%m%d")
+                else:
+                    start_str = FULL_DATA_START_DATE
 
-            for i, code in enumerate(batch_codes):
-                global_idx = start_i + i + 1
-                try:
-                    logger.info(f"[{global_idx}/{len(all_codes)}] {code}")
+                df_w = fetch_ak_data(code, start_str, end_date_str, "weekly")
+                if not df_w.empty:
+                    upsert(df_w, "stock_weekly", engine, "date")
 
-                    # 同步日线数据
-                    latest_daily = get_latest(engine, code, "stock_daily", "date")
-                    if latest_daily:
-                        start_str = (datetime.strptime(latest_daily, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y%m%d")
-                    else:
-                        start_str = FULL_DATA_START_DATE
-
-                    df_d = fetch_ak_data(code, start_str, end_date_str, "daily")
-                    if not df_d.empty:
-                        upsert(df_d, "stock_daily", engine, "date")
-
-                    # 同步周线数据
-                    latest_weekly = get_latest(engine, code, "stock_weekly", "date")
-                    if latest_weekly:
-                        start_str = (datetime.strptime(latest_weekly, "%Y-%m-%d") + timedelta(days=7)).strftime(
-                            "%Y%m%d")
-                    else:
-                        start_str = FULL_DATA_START_DATE
-
-                    df_w = fetch_ak_data(code, start_str, end_date_str, "weekly")
-                    if not df_w.empty:
-                        upsert(df_w, "stock_weekly", engine, "date")
-
-                    # 股票间延迟
-                    pytime.sleep(random.uniform(1.5, 2.5))
-
-                except Exception as e:
-                    logger.error(f"💥 {code} 同步崩溃: {e}", exc_info=True)
-                    failed_list.append(code)
-
-            # 批次间休眠（最后一批不休眠）
-            if batch_idx < total_batches - 1:
-                pause_sec = random.randint(PAUSE_MINUTES_MIN * 60, PAUSE_MINUTES_MAX * 60)
-                logger.info(f"⏳ 第 {batch_idx + 1} 批完成，暂停 {pause_sec // 60} 分钟...")
-                pytime.sleep(pause_sec)
+            except Exception as e:
+                logger.error(f"💥 {code} 同步崩溃: {e}", exc_info=True)
+                failed_list.append(code)
+            logger.info(f"同步完成{cnt}/{total}")
 
         # 保存失败列表
         if failed_list:
