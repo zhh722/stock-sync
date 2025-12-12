@@ -42,7 +42,7 @@ def fetch_baostock_data(code, start, end, freq="daily"):
             "tradestatus,pctChg,peTTM,pbMRQ,psTTM,pcfNcfTTM,isST"
         )
     else:  # weekly or monthly
-        fields = "date,code,open,high,low,close,volume,amount,adjustflag"
+        fields = "date,code,open,high,low,close,volume,amount,adjustflag,turn,pctChg"
 
     rs = bs.query_history_k_data_plus(
         code_bs,
