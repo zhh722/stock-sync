@@ -1,7 +1,6 @@
 pandas
 SQLAlchemy
-akshare
-akshare
+baostock
 pandas
 sqlalchemy
 mysql-connector-python
