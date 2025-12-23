@@ -1,5 +1,6 @@
 # sync_to_mysql.py
 import os
+import random
 import sys
 import time as pytime
 import logging
@@ -13,8 +14,8 @@ MYSQL_USER = os.getenv("MYSQL_USER", "root")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "InsightOne123456")
 MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
 MYSQL_PORT = os.getenv("MYSQL_PORT", "3306")
-MYSQL_DB = os.getenv("MYSQL_DB", "stock_db")
-CODE_CSV_PATH = os.getenv("CODE_CSV_PATH", "./code.csv")
+MYSQL_DB = os.getenv("MYSQL_DB", "stock_db_qfq")
+CODE_CSV_PATH = "./code.csv"
 
 # ================== 日志 ==================
 log_dir = "./logs"
@@ -50,7 +51,7 @@ def fetch_baostock_data(code, start, end, freq="daily"):
         start_date=start,
         end_date=end,
         frequency=frequency,
-        adjustflag="3"  # 前复权
+        adjustflag="2"  # 1：后复权；2：前复权； 3: 不复权。
     )
 
     if rs.error_code != '0':
@@ -81,20 +82,34 @@ def fetch_baostock_data(code, start, end, freq="daily"):
     return df
 
 def upsert(df, table, engine, date_col):
-    """批量更新/插入数据"""
+    """批量更新/插入数据，确保事务提交"""
     if df.empty:
         return
+
+    # 数据清理和准备
+    df = df.where(pd.notnull(df), None)
+    df = df.replace('', pd.NA)
+
     codes = df['code'].unique().tolist()
-    dates = df[date_col].dt.strftime('%Y-%m-%d').unique().tolist()
+    # 确保日期列是 datetime 格式，再格式化为字符串用于 SQL IN 语句
+    dates = pd.to_datetime(df[date_col]).dt.strftime('%Y-%m-%d').unique().tolist()
+
     with engine.connect() as conn:
-        placeholders_c = ','.join([f"'{c}'" for c in codes])
-        placeholders_d = ','.join([f"'{d}'" for d in dates])
-        delete_sql = f"""
-        DELETE FROM `{table}` WHERE `code` IN ({placeholders_c}) AND `{date_col}` IN ({placeholders_d})
-        """
-        conn.execute(text(delete_sql))
-        conn.commit()
-        df.to_sql(table, con=engine, if_exists='append', index=False, method='multi')
+        # 【关键修改】：使用 conn.begin() 开启事务，确保原子性并自动提交
+        with conn.begin():
+            # 1. 执行 DELETE (删除旧记录)
+            placeholders_c = ','.join([f"'{c}'" for c in codes])
+            placeholders_d = ','.join([f"'{d}'" for d in dates])
+            delete_sql = f"""
+            DELETE FROM `{table}` WHERE `code` IN ({placeholders_c}) AND `{date_col}` IN ({placeholders_d})
+            """
+            conn.execute(text(delete_sql))
+
+            # 2. 执行批量 INSERT (插入新记录)
+            # 确保 con=conn，使 to_sql 在当前事务中操作
+            df.to_sql(table, con=conn, if_exists='append', index=False, method='multi')
+
+        # with conn.begin(): 块在这里结束。如果成功，COMMIT 自动发生。
 
 
 def get_latest(engine, code, table, col):
@@ -123,14 +138,9 @@ def load_codes():
 
 
 def main():
+    start_str = "2025-12-17"
     uri = f"mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4"
     engine = create_engine(uri, pool_pre_ping=True)
-
-    # 登录 Baostock
-    lg = bs.login()
-    if lg.error_code != '0':
-        logger.error(f"❌ Baostock login failed: {lg.error_msg}")
-        return
 
     try:
         all_codes = load_codes()
@@ -149,23 +159,23 @@ def main():
 
         failed_list = []
         total = len(all_codes)
+
         for i, code in enumerate(all_codes, 1):
             logger.info(f"正在同步 {i}/{total}: {code}")
-            pytime.sleep(0.5)  # 防限流
+            pytime.sleep(random.uniform(1.0, 1.8))  # 防限流
+            lg = bs.login()
+
+            if lg.error_code != '0':
+                logger.error(f"❌ Baostock login failed for {code}: {lg.error_msg}")
+                failed_list.append(code)
+                continue  # 跳过当前股票
 
             try:
-                # 同步日线
-                latest_daily = get_latest(engine, code, "stock_daily", "date")
-                start_str = (datetime.strptime(latest_daily, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d") \
-                    if latest_daily else "2010-01-01"
                 df_d = fetch_baostock_data(code, start_str, end_date_str, "daily")
                 if not df_d.empty:
                     upsert(df_d, "stock_daily", engine, "date")
 
                 # 同步周线
-                latest_weekly = get_latest(engine, code, "stock_weekly", "date")
-                start_str = (datetime.strptime(latest_weekly, "%Y-%m-%d") + timedelta(days=7)).strftime("%Y-%m-%d") \
-                    if latest_weekly else "2010-01-01"
                 df_w = fetch_baostock_data(code, start_str, end_date_str, "weekly")
                 if not df_w.empty:
                     upsert(df_w, "stock_weekly", engine, "date")
@@ -173,6 +183,8 @@ def main():
             except Exception as e:
                 logger.error(f"💥 {code} 同步崩溃: {e}", exc_info=True)
                 failed_list.append(code)
+            finally:
+                bs.logout()
 
         if failed_list:
             fail_file = os.path.join(log_dir, "failed_codes_baostock.txt")
