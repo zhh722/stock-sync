@@ -8,7 +8,7 @@ IMAGE_TAG := ${GIT_BRANCH}-${GIT_COMMIT}
 
 # 定义build目标
 build:
-	docker build -f docker/Dockerfile -t "${IMAGE_NAME}:${IMAGE_TAG}" .
+	docker build -f Dockerfile -t "${IMAGE_NAME}:${IMAGE_TAG}" .
 	@echo "Built image ${IMAGE_NAME}:${IMAGE_TAG}"
 
 # 定义push目标，用于将构建好的镜像推送到远程仓库
