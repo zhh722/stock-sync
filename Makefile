@@ -3,7 +3,7 @@ GIT_BRANCH := $(shell git symbolic-ref --short HEAD)
 GIT_COMMIT := $(shell git rev-parse --short HEAD)
 
 # 设定镜像名称和标签
-IMAGE_NAME := chanlun-strategy
+IMAGE_NAME := stock-sync
 IMAGE_TAG := ${GIT_BRANCH}-${GIT_COMMIT}
 
 # 定义build目标
