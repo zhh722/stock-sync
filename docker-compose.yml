@@ -6,15 +6,15 @@ services:
     environment:
       MYSQL_USER: root
       MYSQL_PASSWORD: InsightOne123456
-      MYSQL_HOST: mysql # 关键修改：此处改为MySQL容器的服务名
+      MYSQL_HOST: mysql
       MYSQL_DB: stock_db_qfq
     volumes:
       - ./code.csv:/app/code.csv:ro
-      - ./logs:/app/logs
+      - ./logs:/app/logs  # 宿主机 logs 目录挂载到容器
     restart: unless-stopped
-    networks: # 加入网络配置
+    networks:
       - public_net
 
-networks: # 声明使用外部网络
+networks:
   public_net:
     external: true
