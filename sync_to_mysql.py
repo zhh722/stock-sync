@@ -138,7 +138,7 @@ def load_codes():
 
 
 def main():
-    start_str = "2025-12-17"
+    start_str = "2015-01-01"
     uri = f"mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4"
     engine = create_engine(uri, pool_pre_ping=True)
 

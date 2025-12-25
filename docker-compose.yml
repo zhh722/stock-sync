@@ -7,7 +7,7 @@ services:
       MYSQL_USER: root
       MYSQL_PASSWORD: InsightOne123456
       MYSQL_HOST: mysql # 关键修改：此处改为MySQL容器的服务名
-      MYSQL_DB: stock_db
+      MYSQL_DB: stock_db_qfq
     volumes:
       - ./code.csv:/app/code.csv:ro
       - ./logs:/app/logs
