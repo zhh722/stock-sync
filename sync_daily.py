@@ -131,4 +131,6 @@ if __name__ == "__main__":
     同步日期范围: python sync_daily.py --start-date 2024-12-01 --end-date 2024-12-07
     自动同步最新: python sync_daily.py
     '''
+    s_time = time.time()
     main()
+    print(f"同步耗时 {time.time()-s_time}s")
