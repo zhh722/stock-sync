@@ -73,6 +73,7 @@ def sync_date_range(engine, codes, start_date, end_date):
 def sync_latest(engine, codes):
     today = datetime.now().strftime("%Y-%m-%d")
     logger.info(f"正在同步最新日线数据（到{today}为止）")
+    cnt = 1
     for code in codes:
         time.sleep(0.5)
         latest_date = get_latest(engine, code, "stock_daily", "date")
@@ -84,11 +85,12 @@ def sync_latest(engine, codes):
             df = fetch_baostock_data(code, start_date, today, "daily")
             if not df.empty:
                 upsert(df, "stock_daily", engine, "date")
-                logger.info(f"✅ {code} 同步 {len(df)} 条日线数据")
+                logger.info(f"✅ {code} 同步 {cnt}/{len(df)} 条日线数据")
             else:
                 logger.info(f"ℹ️ {code} 无新数据")
         else:
             logger.info(f"ℹ️ {code} 数据已是最新")
+        cnt += 1
 
 def main():
     args = parse_arguments()
