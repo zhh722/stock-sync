@@ -7,3 +7,4 @@ mysql-connector-python
 tenacity
 requests
 psycopg2-binary
+akshare

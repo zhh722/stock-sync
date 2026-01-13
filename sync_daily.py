@@ -46,14 +46,16 @@ def validate_date(date_str):
 
 def sync_single_date(engine, codes, target_date):
     logger.info(f"正在同步指定日期数据（{target_date}）")
+    cnt = 1
     for code in codes:
         time.sleep(0.5)
         df = fetch_baostock_data(code, target_date, target_date, "daily")
         if not df.empty:
             upsert(df, "stock_daily", engine, "date")
-            logger.info(f"✅ {code} 同步 {len(df)} 条 {target_date} 数据")
+            logger.info(f"✅ {code} 同步 {cnt}/{len(df)} 条 {target_date} 数据")
         else:
             logger.info(f"ℹ️ {code} 在 {target_date} 无数据")
+        cnt += 1
 
 def sync_date_range(engine, codes, start_date, end_date):
     logger.info(f"正在同步日期范围数据（{start_date} 到 {end_date}）")
