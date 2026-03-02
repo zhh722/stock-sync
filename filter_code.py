@@ -9,7 +9,7 @@ if lg.error_code != '0':
     print(f"登录失败: {lg.error_msg}")
     exit()
 
-target_date = "2026-02-24"
+target_date = "2026-02-27"
 fields = "date,code,amount,turn,tradestatus,isST"
 
 print(f"正在获取 {target_date} 的全市场股票列表...")
@@ -97,9 +97,10 @@ for index, row in dual_board_df.iterrows():
             # 注意：Baostock的turn是百分比数值(如2.5表示2.5%)
             mcap_float = amount / (turn_rate / 100.0)
 
-            # 筛选条件: 50亿 <= 流通市值 <= 600亿
-            # 5e9 = 50亿, 6e10 = 600亿
-            if 5e9 <= mcap_float <= 6e10:
+            # 筛选条件: 30亿 <= 流通市值 <= 300亿
+            # 3e9  = 3,000,000,000 (30亿)
+            # 3e10 = 30,000,000,000 (300亿)
+            if 3e9 <= mcap_float <= 3e10:
                 filtered_results.append({
                     '代码': curr_code,
                     '名称': curr_name,
@@ -115,7 +116,12 @@ for index, row in dual_board_df.iterrows():
         failed_codes.append({'代码': curr_code, '名称': curr_name, '原因': '未返回行数据(可能非交易日)'})
 
     # 降频以防被封IP，0.2秒通常足够，原代码0.5秒较保守
-    time.sleep(0.2)
+
+    if (len(failed_codes) + len(filtered_results)) % 100 == 0:
+        print(f"已处理 {len(failed_codes) + len(filtered_results)} / {count_total} 只股票...")
+        time.sleep(30)
+    else:
+        time.sleep(0.2)
 
 # 保存结果
 if filtered_results:
