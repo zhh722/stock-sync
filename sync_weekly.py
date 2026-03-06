@@ -87,7 +87,7 @@ def main():
                 df = fetch_baostock_data(code, start_date, week_end, "weekly")
             if not df.empty:
                 upsert(df, "stock_weekly", engine, "date")
-                logger.info(f"✅ {code} 同步 {cnt / len(codes)} 条周线数据")
+                logger.info(f"✅ {code} 同步 {cnt}/{len(codes)} 条周线数据")
                 cnt += 1
             else:
                 logger.info(f"ℹ️ {code} 无新数据")
