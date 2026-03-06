@@ -58,7 +58,12 @@ def main():
                 start_date = (datetime.strptime(latest_date, "%Y-%m-%d") + timedelta(days=7)).strftime("%Y-%m-%d")
             else:
                 start_date = "2010-01-01"
-            df = fetch_baostock_data(code, start_date, week_end, "weekly")
+            try:
+                df = fetch_baostock_data(code, start_date, week_end, "weekly")
+            except Exception as e:
+                logger.info(f"✅ {code} 周线同步失败，等待30s重试")
+                time.sleep(30)
+                df = fetch_baostock_data(code, start_date, week_end, "weekly")
             if not df.empty:
                 upsert(df, "stock_weekly", engine, "date")
                 logger.info(f"✅ {code} 同步 {len(df)} 条周线数据")
