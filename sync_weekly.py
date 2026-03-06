@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import logging
+import pandas as pd
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
 import baostock as bs
@@ -28,6 +29,23 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+def fetch_with_relogin(code, start_date, end_date, freq="weekly", max_retries=3):
+    """带自动重新登录的数据获取"""
+    for attempt in range(max_retries):
+        df = fetch_baostock_data(code, start_date, end_date, freq)
+        if df.empty:
+            bs.logout()
+            time.sleep(1)
+            lg = bs.login()
+            if lg.error_code != '0':
+                logger.warning(f"重新登录失败: {lg.error_msg}，等待5s后重试")
+                time.sleep(5)
+                continue
+            df = fetch_baostock_data(code, start_date, end_date, freq)
+        return df
+    return pd.DataFrame()
 
 
 def main():
@@ -60,10 +78,12 @@ def main():
             else:
                 start_date = "2010-01-01"
             try:
-                df = fetch_baostock_data(code, start_date, week_end, "weekly")
+                df = fetch_with_relogin(code, start_date, week_end, "weekly")
             except Exception as e:
-                logger.info(f"✅ {code} 周线同步失败，等待30s重试")
+                logger.warning(f"⚠️ {code} 周线同步失败: {e}，等待30s重试")
                 time.sleep(30)
+                bs.logout()
+                bs.login()
                 df = fetch_baostock_data(code, start_date, week_end, "weekly")
             if not df.empty:
                 upsert(df, "stock_weekly", engine, "date")

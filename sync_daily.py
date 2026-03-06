@@ -4,6 +4,7 @@ import sys
 import time
 import logging
 import argparse
+import pandas as pd
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
 import baostock as bs
@@ -44,15 +45,34 @@ def validate_date(date_str):
     except ValueError:
         return False
 
+def fetch_with_relogin(code, start_date, end_date, freq="daily", max_retries=3):
+    """带自动重新登录的数据获取"""
+    for attempt in range(max_retries):
+        df = fetch_baostock_data(code, start_date, end_date, freq)
+        # 检查是否因会话超时导致空数据（通过重新登录验证）
+        if df.empty:
+            # 尝试重新登录
+            bs.logout()
+            time.sleep(1)
+            lg = bs.login()
+            if lg.error_code != '0':
+                logger.warning(f"重新登录失败: {lg.error_msg}，等待5s后重试")
+                time.sleep(5)
+                continue
+            # 重新登录成功后再次获取数据
+            df = fetch_baostock_data(code, start_date, end_date, freq)
+        return df
+    return pd.DataFrame()
+
 def sync_single_date(engine, codes, target_date):
     logger.info(f"正在同步指定日期数据（{target_date}）")
     cnt = 1
     for code in codes:
         time.sleep(0.5)
-        df = fetch_baostock_data(code, target_date, target_date, "daily")
+        df = fetch_with_relogin(code, target_date, target_date, "daily")
         if not df.empty:
             upsert(df, "stock_daily", engine, "date")
-            logger.info(f"✅ {code} 同步 {cnt}/{len(df)} 条 {target_date} 数据")
+            logger.info(f"✅ {code} 同步 {cnt}/{len(codes)} 条 {target_date} 数据")
         else:
             logger.info(f"ℹ️ {code} 在 {target_date} 无数据")
         cnt += 1
@@ -83,10 +103,12 @@ def sync_latest(engine, codes):
             start_date = "2010-01-01"
         if start_date <= today:
             try:
-                df = fetch_baostock_data(code, start_date, today, "daily")
+                df = fetch_with_relogin(code, start_date, today, "daily")
             except Exception as e:
-                logger.info(f"✅ {code} 日线同步失败，等待30s重试")
+                logger.warning(f"⚠️ {code} 日线同步失败: {e}，等待30s重试")
                 time.sleep(30)
+                bs.logout()
+                bs.login()
                 df = fetch_baostock_data(code, start_date, today, "daily")
             if not df.empty:
                 upsert(df, "stock_daily", engine, "date")
