@@ -29,6 +29,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def main():
     uri = f"mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4"
     engine = create_engine(uri, pool_pre_ping=True)
@@ -50,9 +51,9 @@ def main():
                 code = line.strip()
                 if code and not code.startswith("#"):
                     codes.append(code.zfill(6))
-
+        cnt = 1
         for code in codes:
-            time.sleep(0.5)
+            time.sleep(0.2)
             latest_date = get_latest(engine, code, "stock_weekly", "date")
             if latest_date:
                 start_date = (datetime.strptime(latest_date, "%Y-%m-%d") + timedelta(days=7)).strftime("%Y-%m-%d")
@@ -66,7 +67,8 @@ def main():
                 df = fetch_baostock_data(code, start_date, week_end, "weekly")
             if not df.empty:
                 upsert(df, "stock_weekly", engine, "date")
-                logger.info(f"✅ {code} 同步 {len(df)} 条周线数据")
+                logger.info(f"✅ {code} 同步 {cnt / len(codes)} 条周线数据")
+                cnt += 1
             else:
                 logger.info(f"ℹ️ {code} 无新数据")
         logger.info("✅ 周线数据同步完成")
@@ -75,6 +77,7 @@ def main():
     finally:
         bs.logout()
         logger.info("✅ 周线同步任务结束")
+
 
 if __name__ == "__main__":
     main()

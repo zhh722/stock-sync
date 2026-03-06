@@ -75,7 +75,7 @@ def sync_latest(engine, codes):
     logger.info(f"正在同步最新日线数据（到{today}为止）")
     cnt = 1
     for code in codes:
-        time.sleep(0.5)
+        time.sleep(0.2)
         latest_date = get_latest(engine, code, "stock_daily", "date")
         if latest_date:
             start_date = (datetime.strptime(latest_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
