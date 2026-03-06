@@ -82,10 +82,15 @@ def sync_latest(engine, codes):
         else:
             start_date = "2010-01-01"
         if start_date <= today:
-            df = fetch_baostock_data(code, start_date, today, "daily")
+            try:
+                df = fetch_baostock_data(code, start_date, today, "daily")
+            except Exception as e:
+                logger.info(f"✅ {code} 日线同步失败，等待30s重试")
+                time.sleep(30)
+                df = fetch_baostock_data(code, start_date, today, "daily")
             if not df.empty:
                 upsert(df, "stock_daily", engine, "date")
-                logger.info(f"✅ {code} 同步 {cnt}/{len(df)} 条日线数据")
+                logger.info(f"✅ {code} 同步 {cnt}/{len(codes)} 条日线数据")
             else:
                 logger.info(f"ℹ️ {code} 无新数据")
         else:
