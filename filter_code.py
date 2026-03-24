@@ -99,8 +99,8 @@ for index, row in dual_board_df.iterrows():
 
             # 筛选条件: 30亿 <= 流通市值 <= 300亿
             # 3e9  = 3,000,000,000 (30亿)
-            # 3e10 = 30,000,000,000 (300亿)
-            if 3e9 <= mcap_float <= 3e10:
+            # 3e10 = 60,000,000,000 (600亿)
+            if 3e9 <= mcap_float <= 6e10:
                 filtered_results.append({
                     '代码': curr_code,
                     '名称': curr_name,
