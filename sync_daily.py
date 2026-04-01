@@ -100,7 +100,7 @@ def sync_latest(engine, codes):
         if latest_date:
             start_date = (datetime.strptime(latest_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
         else:
-            start_date = "2010-01-01"
+            start_date = "2024-01-01"
         if start_date <= today:
             try:
                 df = fetch_with_relogin(code, start_date, today, "daily")
