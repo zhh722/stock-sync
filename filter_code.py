@@ -130,9 +130,11 @@ if filtered_results:
     result_df = result_df.sort_values(by='流通市值(亿)', ascending=True)
     result_df.to_csv("calculated_float_mcap.csv", index=False, encoding="utf-8-sig")
 
-    code_df = result_df[["代码"]].rename(columns={"代码":"code"})
+    code_df = result_df[["代码"]].rename(columns={"代码":"code"}).copy()
     code_df['code'] = code_df['code'].str.replace(r'^sh\.|^sz\.', '', regex=True)
-    code_df.to_csv("code.csv",index=False)
+    code_df['priority'] = code_df['code'].str.startswith('688').map(lambda is_688: 0 if is_688 else 1)
+    code_df = code_df.sort_values(by=['priority', 'code'], ascending=[True, True]).drop(columns=['priority'])
+    code_df.to_csv("code.csv", index=False)
 
     print(f"\n成功筛选 {len(result_df)} 只股票，已保存至 calculated_float_mcap.csv")
 else:
