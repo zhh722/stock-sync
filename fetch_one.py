@@ -4,8 +4,10 @@ import baostock as bs
 
 def fetch_baostock_data(code, start, end, freq="daily"):
     """从 Baostock 获取股票数据（支持日线/周线，前复权）"""
-
-    code_bs = f"sh.{code}" if code.startswith(('6', '9')) else f"sz.{code}"
+    if "sh." in code or "sz." in code:
+        code_bs = code
+    else:
+        code_bs = f"sh.{code}" if code.startswith(('6', '9')) else f"sz.{code}"
     frequency = "d" if freq == "daily" else "w"
 
     # 根据频率选择字段（周线不支持 preclose 等）
@@ -56,5 +58,5 @@ def fetch_baostock_data(code, start, end, freq="daily"):
 
 
 if __name__ == "__main__":
-    code = "688318"
-    fetch_baostock_data(code, "2025-08-01", "2026-03-05").to_csv(f"{code}_daily.csv", index=False)
+    code = "sh.000001"
+    fetch_baostock_data(code, "2026-01-01", "2026-04-15").to_csv(f"{code}_daily.csv", index=False)
