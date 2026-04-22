@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends procps vim && r
 # 只安装 Python 依赖，不再安装 cron
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install baostock --upgrade -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 COPY . .
 
