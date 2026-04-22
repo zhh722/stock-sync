@@ -7,7 +7,7 @@ services:
       - ./mysql_data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: InsightOne123456
-      MYSQL_DATABASE: stock_db
+      MYSQL_DATABASE: stock_db_qfq
     ports:
       - "3306:3306"
     networks: # 加入网络配置
