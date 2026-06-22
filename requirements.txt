@@ -6,5 +6,7 @@ sqlalchemy
 mysql-connector-python
 tenacity
 requests
+beautifulsoup4
+lxml
 psycopg2-binary
 akshare
