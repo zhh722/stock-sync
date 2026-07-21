@@ -2,14 +2,66 @@ import baostock as bs
 import pandas as pd
 import time
 import re
+import socket
+
+SOCKET_TIMEOUT = 15
+MAX_RETRIES = 3
+REQUEST_SLEEP_SECONDS = 0.2
+RELOGIN_SLEEP_SECONDS = 1
+
+socket.setdefaulttimeout(SOCKET_TIMEOUT)
+
+
+def login_baostock():
+    lg = bs.login()
+    if lg.error_code != '0':
+        print(f"登录失败: {lg.error_msg}")
+        return False
+    return True
+
+
+def relogin_baostock():
+    try:
+        bs.logout()
+    except Exception as e:
+        print(f"登出异常，继续重新登录: {e}")
+    time.sleep(RELOGIN_SLEEP_SECONDS)
+    return login_baostock()
+
+
+def query_history_with_relogin(code, fields, target_date, max_retries=MAX_RETRIES):
+    for attempt in range(1, max_retries + 1):
+        try:
+            rs = bs.query_history_k_data_plus(
+                code,
+                fields,
+                start_date=target_date,
+                end_date=target_date,
+                frequency="d",
+                adjustflag="2"  # 前复权
+            )
+        except Exception as e:
+            print(f"{code} 第 {attempt}/{max_retries} 次请求异常: {e}")
+            rs = None
+
+        if rs is not None and rs.error_code == '0':
+            return rs
+
+        error_msg = "未返回数据" if rs is None else rs.error_msg
+        print(f"{code} 第 {attempt}/{max_retries} 次请求失败: {error_msg}")
+
+        if attempt < max_retries:
+            print(f"{code} 尝试重新登录后重试...")
+            if not relogin_baostock():
+                time.sleep(RELOGIN_SLEEP_SECONDS)
+
+    return rs
 
 # 登录
-lg = bs.login()
-if lg.error_code != '0':
-    print(f"登录失败: {lg.error_msg}")
+if not login_baostock():
     exit()
 
-target_date = "2026-02-27"
+target_date = "2026-06-18"
 fields = "date,code,amount,turn,tradestatus,isST"
 
 print(f"正在获取 {target_date} 的全市场股票列表...")
@@ -49,22 +101,25 @@ failed_codes = []
 
 print(f"开始执行详细数据筛选...")
 
-for index, row in dual_board_df.iterrows():
+for processed_count, (index, row) in enumerate(dual_board_df.iterrows(), start=1):
     curr_code = row['code']
     curr_name = row['code_name']
 
     # 获取历史K线数据
-    rs = bs.query_history_k_data_plus(
-        curr_code,
-        fields,
-        start_date=target_date,
-        end_date=target_date,
-        frequency="d",
-        adjustflag="2"  # 前复权
-    )
+    rs = query_history_with_relogin(curr_code, fields, target_date)
+
+    if rs is None:
+        failed_codes.append({'代码': curr_code, '名称': curr_name, '原因': '接口异常:未返回结果'})
+        if processed_count % 100 == 0:
+            print(f"已处理 {processed_count} / {count_total} 只股票...")
+        time.sleep(REQUEST_SLEEP_SECONDS)
+        continue
 
     if rs.error_code != '0':
         failed_codes.append({'代码': curr_code, '名称': curr_name, '原因': f'接口报错:{rs.error_msg}'})
+        if processed_count % 100 == 0:
+            print(f"已处理 {processed_count} / {count_total} 只股票...")
+        time.sleep(REQUEST_SLEEP_SECONDS)
         continue
 
     has_data = False
@@ -116,12 +171,9 @@ for index, row in dual_board_df.iterrows():
         failed_codes.append({'代码': curr_code, '名称': curr_name, '原因': '未返回行数据(可能非交易日)'})
 
     # 降频以防被封IP，0.2秒通常足够，原代码0.5秒较保守
-
-    if (len(failed_codes) + len(filtered_results)) % 100 == 0:
-        print(f"已处理 {len(failed_codes) + len(filtered_results)} / {count_total} 只股票...")
-        time.sleep(30)
-    else:
-        time.sleep(0.2)
+    if processed_count % 100 == 0:
+        print(f"已处理 {processed_count} / {count_total} 只股票...")
+    time.sleep(REQUEST_SLEEP_SECONDS)
 
 # 保存结果
 if filtered_results:
